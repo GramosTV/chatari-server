@@ -34,6 +34,11 @@ export class ChatGateway {
     @MessageBody() data: { message: string; isBot: boolean },
     @ConnectedSocket() socket: Socket,
   ) {
-    this.chatService.sendMessage(socket.id, data.message, this.server);
+    await this.chatService.sendMessage(
+      socket.id,
+      data.message,
+      data.isBot,
+      this.server,
+    );
   }
 }

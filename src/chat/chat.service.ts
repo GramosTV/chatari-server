@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Server } from 'socket.io';
+import { BotService } from 'src/bot/bot.service';
 @Injectable()
 export class ChatService {
   private activeUsers: Set<string> = new Set();
   private waitingUsers: Set<string> = new Set();
   private userRoomMap: Map<string, string> = new Map();
+  constructor(private botService: BotService) {}
 
   addUser(userId: string, server: Server) {
     this.activeUsers.add(userId);
@@ -62,15 +64,27 @@ export class ChatService {
     } else {
       server
         .to(userId)
-        .emit('waitingForUser', { message: 'Waiting for another user.' });
+        .emit('waitingForUser', { message: 'Hold tight! Waiting for a user.' });
     }
   }
 
-  sendMessage(userId: string, message: string, server: Server) {
+  async sendMessage(
+    userId: string,
+    message: string,
+    isBot: boolean,
+    server: Server,
+  ) {
+    if (isBot) {
+      const botReply = await this.botService.getResponse(message);
+      server
+        .to(userId)
+        .emit('newMessage', { message: botReply, sender: 'Bot' });
+      return;
+    }
     const roomId = this.userRoomMap.get(userId);
     this.userRoomMap.forEach((value, key) => {
-      if (value === roomId) {
-        server.to(key).emit('newMessage', { message });
+      if (value === roomId && key !== userId) {
+        server.to(key).emit('newMessage', { message, sender: 'User' });
       }
     });
   }
