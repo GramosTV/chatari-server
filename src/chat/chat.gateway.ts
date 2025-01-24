@@ -1,0 +1,39 @@
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { ChatService } from './chat.service';
+
+@WebSocketGateway({ cors: { origin: '*' } })
+export class ChatGateway {
+  @WebSocketServer() server: Server;
+
+  constructor(private chatService: ChatService) {}
+
+  handleConnection(socket: Socket) {
+    console.log('A user connected:', socket.id);
+    this.chatService.addUser(socket.id, this.server);
+  }
+
+  handleDisconnect(socket: Socket) {
+    console.log('A user disconnected:', socket.id);
+    this.chatService.removeUser(socket.id, this.server);
+  }
+
+  @SubscribeMessage('connectUser')
+  async handleUserConnection(@ConnectedSocket() socket: Socket) {
+    this.chatService.pairUser(socket.id, this.server);
+  }
+
+  @SubscribeMessage('sendMessage')
+  async handleMessage(
+    @MessageBody() data: { message: string; isBot: boolean },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    this.chatService.sendMessage(socket.id, data.message, this.server);
+  }
+}
