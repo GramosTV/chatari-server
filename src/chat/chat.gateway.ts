@@ -41,4 +41,19 @@ export class ChatGateway {
       this.server,
     );
   }
+
+  @SubscribeMessage('leaveRoom')
+  leaveRoom(@ConnectedSocket() socket: Socket) {
+    this.chatService.leaveRoom(socket.id, this.server);
+  }
+
+  @SubscribeMessage('typing')
+  handleTyping(@ConnectedSocket() socket: Socket) {
+    this.chatService.handleTyping(socket.id, this.server);
+  }
+
+  @SubscribeMessage('stopTyping')
+  handleStopTyping(@ConnectedSocket() socket: Socket) {
+    this.chatService.handleStopTyping(socket.id, this.server);
+  }
 }

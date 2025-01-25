@@ -35,7 +35,11 @@ export class ChatService {
       this.userRoomMap.forEach((value, key) => {
         if (value === roomId) {
           this.userRoomMap.delete(key);
-          server.to(key).emit('chatEnded', { message: 'Room eradicated.' });
+          server.to(key).emit('chatEnded', {
+            sender: 'System',
+            message:
+              key === userId ? 'You left the room.' : 'User left the room.',
+          });
         }
       });
     }
@@ -75,10 +79,12 @@ export class ChatService {
     server: Server,
   ) {
     if (isBot) {
+      server.to(userId).emit('typing');
       const botReply = await this.botService.getResponse(message);
       server
         .to(userId)
         .emit('newMessage', { message: botReply, sender: 'Bot' });
+      server.to(userId).emit('stopTyping');
       return;
     }
     const roomId = this.userRoomMap.get(userId);
@@ -87,5 +93,32 @@ export class ChatService {
         server.to(key).emit('newMessage', { message, sender: 'User' });
       }
     });
+  }
+
+  handleTyping(userId: string, server: Server) {
+    const roomId = this.getRoomByUserId(userId);
+    if (roomId) {
+      this.userRoomMap.forEach((value, key) => {
+        if (value === roomId && key !== userId) {
+          server.to(key).emit('typing');
+        }
+      });
+    }
+  }
+
+  handleStopTyping(userId: string, server: Server) {
+    const roomId = this.getRoomByUserId(userId);
+    if (roomId) {
+      this.userRoomMap.forEach((value, key) => {
+        if (value === roomId && key !== userId) {
+          server.to(key).emit('stopTyping');
+        }
+      });
+    }
+  }
+
+  leaveRoom(userId: string, server: Server) {
+    this.removeWaitingUser(userId, server);
+    this.eradicateRoom(userId, server);
   }
 }
